@@ -2,6 +2,7 @@
 from collections import defaultdict
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 def build_vocab(data):
     word_count = defaultdict(lambda : 0)
@@ -94,7 +95,8 @@ def perceptron_train(data, max_itr = 100):
             # if (train_y[i] * y) < 0:
             if y != train_y[i]:
                 k = k + 1
-                w = np.add(w, train_y[i] * train_x[i])
+                temp = [j* train_y[i] for j in train_x[i]]
+                w = np.add(w, temp)
         itr = itr + 1
     return w, k, itr
 
@@ -122,50 +124,92 @@ def relevant_weights(w, vocab, count):
 
 def training_data_impact(raw_data):
     steps = [100, 200, 400, 800, 2000, 4000]
+    train_p_error = []
+    val_p_error = []
+    train_avg_p_error = []
+    val_avg_p_error = []
+    p_itr = []
+    avg_p_itr = []
+
     for step in steps:
         print "Using N = " + str(step)
+
         training, validation = partition_data(raw_data, step)
         training = clean_data(training)
         validation = clean_data(validation)
+
         vocab = build_vocab(training[1])
-        samples = build_feature_list(training[1], vocab)
+
         data = {}
+        samples = build_feature_list(training[1], vocab)
         data["train_x"] = samples
         data["train_y"] = training[0]
-        w, k, itr = perceptron_train_avg(data, 1000)
-        print "The error on the training set using the averaged perceptron is: " + str(perceptron_test(w, data, "train_x", "train_y"))
         validation_samples = build_feature_list(validation[1], vocab)
         data["val_x"] = validation_samples
         data["val_y"] = validation[0]
-        print "The error on the validation set using the averaged perceptron is: " + str(perceptron_test(w, data, "val_x", "val_y"))
 
-        w, k, itr = perceptron_train(data, 1000)
-        print "The error on the training set using the perceptron is: " + str(perceptron_test(w, data, "train_x", "train_y"))
-        validation_samples = build_feature_list(validation[1], vocab)
-        data["val_x"] = validation_samples
-        data["val_y"] = validation[0]
-        print "The error on the validation set using the perceptron is: " + str(perceptron_test(w, data, "val_x", "val_y"))
+        w, k, itr = perceptron_train_avg(data, 100)
+        train_avg_p_error.append(perceptron_test(w, data, "train_x", "train_y"))
+        val_avg_p_error.append(perceptron_test(w, data, "val_x", "val_y"))
+        avg_p_itr.append(itr)
 
+        w, k, itr = perceptron_train(data, 100)
+        train_p_error.append(perceptron_test(w, data, "train_x", "train_y"))
+        val_p_error.append(perceptron_test(w, data, "val_x", "val_y"))
+        p_itr.append(itr)
+    #
+    # print train_p_error
+    # print val_p_error
+    # print train_avg_p_error
+    # print val_avg_p_error
+    plt.scatter(steps, train_p_error)
+    plt.scatter(steps, val_p_error)
+    plt.ylabel("Error")
+    plt.xlabel("Training dataset size")
+    plt.title("Perceptron Error")
+    plt.savefig("P_error")
+
+    plt.clf()
+
+    plt.scatter(steps, train_avg_p_error)
+    plt.scatter(steps, val_avg_p_error)
+    plt.ylabel("Error")
+    plt.xlabel("Training dataset size")
+    plt.title("Average Perceptron Error")
+    plt.savefig("Avg_P_error")
+
+    plt.clf()
+
+    plt.scatter(steps, p_itr)
+    plt.scatter(steps, avg_p_itr)
+    plt.ylabel("Iterations")
+    plt.xlabel("Dataset Size")
+    plt.title("Number of iterations to train VS dataset size")
+    plt.savefig("itr")
+
+    print p_itr
+    print avg_p_itr
+    return
 
 def main():
     tic = time.time()
     raw_data = read_data("./data/spam_train.txt")
     print "File opened"
-    training_data_impact(raw_data)
+    # training_data_impact(raw_data)
     toc = time.time()
-    print toc-tic
+    # print toc-tic
     # training, validation = partition_data(raw_data, 4000)
-    # training = clean_data(training)
+    training = clean_data(raw_data)
     # validation = clean_data(validation)
     # print "Data pre-processed"
-    # vocab = build_vocab(training[1])
+    vocab = build_vocab(training[1])
     # print "Vocabulary built"
-    # samples = build_feature_list(training[1], vocab)
+    samples = build_feature_list(training[1], vocab)
     # print "Feature matrix formed"
-    # data = {}
-    # data["train_x"] = samples
-    # data["train_y"] = training[0]
-    # w, k, itr = perceptron_train_avg(data, 1000)
+    data = {}
+    data["train_x"] = samples
+    data["train_y"] = training[0]
+    w, k, itr = perceptron_train_avg(data, 100)
     # # print w
     # print "The number of misclasified samples: "
     # print k
